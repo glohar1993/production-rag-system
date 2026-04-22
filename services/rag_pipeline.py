@@ -189,9 +189,18 @@ class RAGPipeline:
         grade, good_chunks = await self._grader.grade(standalone_query, chunks)
 
         if grade == CRAGGrade.INCORRECT:
-            yield StreamEvent(event="token", data="I couldn't find reliable information to answer your question.")
-            yield StreamEvent(event="done", data={"cached": False, "grade": grade, "trace_id": trace_id})
-            return
+            # Nothing in index — try web search before refusing
+            log.info("stream_crag_incorrect_web_fallback", query=standalone_query[:60])
+            web_chunks = await self._web.search(
+                standalone_query, max_results=settings.crag_max_web_results
+            )
+            if web_chunks:
+                good_chunks = web_chunks
+                grade = CRAGGrade.AMBIGUOUS
+            else:
+                yield StreamEvent(event="token", data="I couldn't find reliable information in my knowledge base or on the web. Please try rephrasing your question.")
+                yield StreamEvent(event="done", data={"cached": False, "grade": "incorrect", "trace_id": trace_id})
+                return
 
         if grade == CRAGGrade.AMBIGUOUS:
             sub_queries = await self._decomposer.decompose(standalone_query)
