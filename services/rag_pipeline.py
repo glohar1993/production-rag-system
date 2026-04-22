@@ -101,7 +101,6 @@ class RAGPipeline:
             )
             if web_chunks:
                 good_chunks = web_chunks
-                grade = CRAGGrade.AMBIGUOUS  # we have external data now
                 log.info("web_fallback_succeeded", n_chunks=len(web_chunks))
             else:
                 # Web also came up empty — refuse rather than hallucinate
@@ -116,9 +115,8 @@ class RAGPipeline:
                     trace_id=trace_id,
                     latency_ms=(time.perf_counter() - start) * 1000,
                 )
-
-        if grade == CRAGGrade.AMBIGUOUS:
-            # Decompose + re-retrieve to fill gaps
+        elif grade == CRAGGrade.AMBIGUOUS:
+            # Decompose + re-retrieve to fill gaps from the index
             sub_queries = await self._decomposer.decompose(standalone_query)
             extra_chunks = await self._crag.retrieve_and_merge(sub_queries, filters)
             good_chunks = self._deduplicate(good_chunks + extra_chunks)
