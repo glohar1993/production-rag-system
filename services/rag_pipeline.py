@@ -46,6 +46,7 @@ class RAGPipeline:
         self._grader = DocumentGrader()
         self._decomposer = QueryDecomposer()
         self._crag = CRAGAgent()
+        self._web = WebSearchTool()
         self._filter = MetadataFilter()
         self._output_guard = OutputGuard()
 
