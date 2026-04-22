@@ -60,7 +60,7 @@ class WebSearchTool:
         fetch_n = max_results * 3
 
         with DDGS() as ddgs:
-            for position, r in enumerate(ddgs.text(query, max_results=fetch_n)):
+            for r in ddgs.text(query, max_results=fetch_n):
                 if len(chunks) >= max_results:
                     break
 
