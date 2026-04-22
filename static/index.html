@@ -3,525 +3,413 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Production RAG System</title>
+  <title>securify — Production RAG</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:        #0d0f17;
-      --surface:   #161923;
-      --surface2:  #1e2130;
-      --border:    #252840;
-      --accent:    #6366f1;
-      --accent2:   #8b5cf6;
-      --accent-glow: rgba(99,102,241,0.18);
-      --green:     #22c55e;
-      --red:       #ef4444;
-      --yellow:    #f59e0b;
-      --blue:      #38bdf8;
-      --text:      #e2e8f0;
-      --muted:     #5a6280;
-      --muted2:    #8892b0;
-      --code-bg:   #0a0c14;
-    }
+    html, body { height: 100%; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+      font-family: 'Readex Pro', system-ui, -apple-system, sans-serif;
+      background: #000;
+      color: #fff;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       overflow: hidden;
     }
 
-    /* ── Header ── */
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 24px;
-      height: 56px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      flex-shrink: 0;
-      z-index: 10;
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 700;
-      font-size: 1rem;
-      letter-spacing: -0.02em;
-    }
-    .logo-icon {
-      width: 30px; height: 30px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 15px;
-    }
-    .header-right {
-      display: flex; align-items: center; gap: 20px;
-    }
-    .health-bar { display: flex; gap: 14px; align-items: center; }
-    .health-dot { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--muted2); }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: all 0.3s; }
-    .dot.ok  { background: var(--green); box-shadow: 0 0 7px var(--green); }
-    .dot.err { background: var(--red);   box-shadow: 0 0 7px var(--red); }
-    .dot.pulse { animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-    /* Nav tabs (header) */
-    .nav-tabs { display: flex; gap: 2px; }
-    .nav-tab {
-      padding: 6px 14px; font-size: 0.8rem; border-radius: 6px;
-      cursor: pointer; color: var(--muted2); border: 1px solid transparent;
-      transition: all 0.15s; background: none;
-    }
-    .nav-tab:hover { color: var(--text); background: var(--surface2); }
-    .nav-tab.active { color: var(--text); background: var(--accent-glow); border-color: rgba(99,102,241,0.35); }
-
-    /* ── Layout ── */
-    .layout {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      flex: 1;
-      overflow: hidden;
-      height: calc(100vh - 56px);
+    .hero-title {
+      letter-spacing: -0.04em;
+      line-height: 0.95;
     }
 
-    /* ── Sidebar ── */
-    .sidebar {
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      background: var(--surface);
+    /* ── App overlay transition ── */
+    #app {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.45s cubic-bezier(0.16,1,0.3,1);
     }
-    .sidebar-section {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .sidebar-section h3 {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--muted);
-      margin-bottom: 10px;
-    }
-    label {
-      display: block;
-      font-size: 0.78rem;
-      color: var(--muted2);
-      margin-bottom: 4px;
-    }
-    input, select, textarea {
-      width: 100%;
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      padding: 7px 10px;
-      font-size: 0.82rem;
-      outline: none;
-      transition: border-color 0.15s;
-      font-family: inherit;
-    }
-    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
-    .row { margin-bottom: 10px; }
-    .row:last-child { margin-bottom: 0; }
-
-    input[type=range] {
-      padding: 0; border: none; background: transparent;
-      accent-color: var(--accent); cursor: pointer;
-    }
-    .range-row { display: flex; align-items: center; gap: 8px; }
-    .range-val { font-size: 0.8rem; color: var(--text); min-width: 20px; text-align: right; font-variant-numeric: tabular-nums; }
-
-    .filter-tags { margin-bottom: 6px; min-height: 4px; }
-    .filter-tag {
-      display: inline-flex; align-items: center; gap: 5px;
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 4px; padding: 2px 7px; font-size: 0.72rem; margin: 2px 2px 2px 0;
-    }
-    .filter-tag button {
-      background: none; border: none; color: var(--muted);
-      cursor: pointer; padding: 0; font-size: 13px; line-height: 1;
-    }
-    .filter-tag button:hover { color: var(--red); }
-    .add-filter { display: flex; gap: 5px; }
-    .add-filter input { flex: 1; }
-
-    .btn-small {
-      padding: 5px 11px; font-size: 0.73rem;
-      background: var(--surface2); border: 1px solid var(--border);
-      color: var(--text); border-radius: 6px; cursor: pointer;
-      transition: all 0.15s; white-space: nowrap; font-family: inherit;
-    }
-    .btn-small:hover { background: var(--accent); border-color: var(--accent); color: white; }
-    .btn-small:active { opacity: 0.8; }
-
-    /* History */
-    .history { flex: 1; overflow-y: auto; padding: 8px; }
-    .history-item {
-      padding: 7px 10px; border-radius: 6px; cursor: pointer;
-      border: 1px solid transparent; margin-bottom: 3px;
-      font-size: 0.78rem; color: var(--muted2);
-      transition: all 0.1s;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .history-item:hover { background: var(--surface2); color: var(--text); }
-    .history-item.active { border-color: rgba(99,102,241,0.4); color: var(--text); background: var(--accent-glow); }
-    .history-empty { padding: 16px 10px; font-size: 0.78rem; color: var(--muted); text-align: center; }
-
-    /* ── Main panel ── */
-    .main { display: flex; flex-direction: column; overflow: hidden; position: relative; }
-
-    /* Tab panels */
-    .tab-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
-    .tab-panel.active { display: flex; }
-
-    /* ── Chat panel ── */
-    .chat {
-      flex: 1; overflow-y: auto; padding: 24px 32px;
-      display: flex; flex-direction: column; gap: 18px;
+    #app.open {
+      opacity: 1;
+      pointer-events: all;
     }
 
-    .empty-state {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 14px;
-      color: var(--muted); text-align: center;
-      padding: 60px 20px; flex: 1;
+    /* ── Landing transition ── */
+    #landing {
+      transition: opacity 0.45s cubic-bezier(0.16,1,0.3,1);
     }
-    .empty-icon {
-      width: 60px; height: 60px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border-radius: 16px; display: flex; align-items: center;
-      justify-content: center; font-size: 28px;
-      box-shadow: 0 0 40px rgba(99,102,241,0.25);
-    }
-    .empty-state h2 { font-size: 1.15rem; color: var(--text); font-weight: 600; }
-    .empty-state p { font-size: 0.82rem; color: var(--muted2); }
-    .example-chips { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 6px; max-width: 560px; }
-    .chip {
-      padding: 6px 13px; background: var(--surface); border: 1px solid var(--border);
-      border-radius: 20px; font-size: 0.78rem; cursor: pointer; color: var(--muted2);
-      transition: all 0.15s;
-    }
-    .chip:hover { border-color: var(--accent); background: var(--accent-glow); color: var(--text); }
-
-    /* Messages */
-    .msg-user {
-      align-self: flex-end; max-width: 68%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: white; border-radius: 16px 16px 4px 16px;
-      padding: 11px 16px; font-size: 0.88rem; line-height: 1.55;
-      word-break: break-word;
-    }
-    .msg-assistant { align-self: flex-start; max-width: 82%; width: 100%; }
-    .msg-header {
-      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-    }
-    .msg-avatar {
-      width: 26px; height: 26px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border-radius: 50%; display: flex; align-items: center;
-      justify-content: center; font-size: 13px; flex-shrink: 0;
-    }
-    .msg-meta { font-size: 0.7rem; color: var(--muted); }
-    .msg-body {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 4px 16px 16px 16px;
-      padding: 14px 18px; font-size: 0.88rem; line-height: 1.72;
-      word-break: break-word; position: relative;
-    }
-    .msg-body.streaming::after {
-      content: "▋"; animation: blink 0.75s step-end infinite;
-      color: var(--accent);
-    }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-
-    /* Answer text formatting */
-    .answer-text { white-space: pre-wrap; }
-    .answer-text code {
-      background: var(--code-bg); padding: 1px 5px; border-radius: 4px;
-      font-family: "SF Mono", "Fira Code", monospace; font-size: 0.83em;
-      color: var(--blue); border: 1px solid var(--border);
-    }
-    .answer-text pre {
-      background: var(--code-bg); border: 1px solid var(--border);
-      border-radius: 8px; padding: 12px 14px; margin: 8px 0;
-      overflow-x: auto;
-    }
-    .answer-text pre code {
-      background: none; border: none; padding: 0; color: var(--text);
-      font-size: 0.82rem;
-    }
-
-    /* Tags */
-    .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-    .tag {
-      padding: 2px 8px; border-radius: 4px; font-size: 0.68rem; font-weight: 500;
-      letter-spacing: 0.02em;
-    }
-    .tag-correct   { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.25); }
-    .tag-ambiguous { background: rgba(245,158,11,0.12); color: var(--yellow); border: 1px solid rgba(245,158,11,0.25); }
-    .tag-incorrect { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.25); }
-    .tag-type    { background: rgba(56,189,248,0.1); color: var(--blue); border: 1px solid rgba(56,189,248,0.2); }
-    .tag-cached  { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.25); }
-    .tag-latency { background: var(--surface2); color: var(--muted2); border: 1px solid var(--border); }
-
-    /* Citations */
-    .citations { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
-    .citations-title {
-      font-size: 0.68rem; text-transform: uppercase;
-      letter-spacing: 0.1em; color: var(--muted); margin-bottom: 7px;
-    }
-    .citation {
-      display: flex; align-items: flex-start; gap: 8px; padding: 7px 10px;
-      border-radius: 6px; background: var(--code-bg); margin-bottom: 4px;
-      font-size: 0.76rem; border: 1px solid var(--border);
-    }
-    .citation-num {
-      min-width: 18px; height: 18px; border-radius: 50%;
-      background: var(--accent-glow); border: 1px solid rgba(99,102,241,0.3);
-      color: var(--accent); font-size: 0.65rem; font-weight: 700;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .citation-body { flex: 1; min-width: 0; }
-    .citation-source { color: var(--accent); font-weight: 600; margin-bottom: 2px; }
-    .citation-text {
-      color: var(--muted2); overflow: hidden; display: -webkit-box;
-      -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-    }
-    .citation-score {
-      flex-shrink: 0; color: var(--muted); font-variant-numeric: tabular-nums;
-      font-size: 0.7rem; padding-top: 2px;
-    }
-
-    /* Error */
-    .msg-error {
-      align-self: flex-start;
-      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
-      border-radius: 8px; padding: 10px 14px; font-size: 0.84rem;
-      color: var(--red); max-width: 80%;
-    }
-
-    /* ── Input bar ── */
-    .input-bar {
-      border-top: 1px solid var(--border);
-      padding: 14px 24px 16px;
-      background: var(--surface);
-      flex-shrink: 0;
-    }
-    .input-row { display: flex; gap: 10px; align-items: flex-end; }
-    .input-wrap { flex: 1; position: relative; }
-    #query-input {
-      width: 100%; padding: 11px 16px;
-      border-radius: 10px; resize: none;
-      min-height: 46px; max-height: 150px;
-      font-size: 0.92rem; line-height: 1.5;
-    }
-    .send-btn {
-      width: 46px; height: 46px; border-radius: 10px; flex-shrink: 0;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border: none; cursor: pointer; color: white;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; transition: opacity 0.15s, transform 0.1s;
-    }
-    .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-    .send-btn:hover:not(:disabled) { opacity: 0.88; transform: scale(1.04); }
-    .send-btn:active:not(:disabled) { transform: scale(0.97); }
-
-    .input-footer {
-      display: flex; align-items: center; gap: 16px; margin-top: 8px;
-      font-size: 0.75rem; color: var(--muted);
-    }
-    .toggle-row { display: flex; align-items: center; gap: 5px; }
-    input[type=checkbox] { width: auto; accent-color: var(--accent); cursor: pointer; }
-    .input-footer label { display: inline; margin: 0; cursor: pointer; }
-    .kbd { padding: 1px 5px; background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; font-size: 0.65rem; }
-
-    /* ── Search / Debug panel ── */
-    .search-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .panel-header { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-end; }
-    .panel-header .input-wrap { flex: 1; }
-    .panel-body { flex: 1; overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 10px; }
-
-    .chunk-card {
-      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-      padding: 14px 16px; font-size: 0.82rem;
-    }
-    .chunk-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 8px; gap: 8px;
-    }
-    .chunk-source {
-      color: var(--accent); font-weight: 600; font-size: 0.78rem;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .chunk-score-badge {
-      background: var(--accent-glow); border: 1px solid rgba(99,102,241,0.3);
-      color: var(--accent); padding: 2px 7px; border-radius: 4px; font-size: 0.7rem;
-      font-variant-numeric: tabular-nums; flex-shrink: 0;
-    }
-    .chunk-meta { font-size: 0.7rem; color: var(--muted); margin-bottom: 6px; }
-    .chunk-text { color: var(--muted2); line-height: 1.6; white-space: pre-wrap; }
-    .search-latency { font-size: 0.75rem; color: var(--muted); padding: 0 24px 8px; }
-
-    .search-empty {
-      flex: 1; display: flex; align-items: center; justify-content: center;
-      color: var(--muted); font-size: 0.85rem;
+    #landing.hidden-landing {
+      opacity: 0;
+      pointer-events: none;
     }
 
     /* ── Scrollbars ── */
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
 
-    /* ── Loading spinner ── */
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner {
-      width: 16px; height: 16px; border: 2px solid var(--border);
-      border-top-color: var(--accent); border-radius: 50%;
-      animation: spin 0.7s linear infinite; display: inline-block;
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0);    }
     }
+    .msg-anim { animation: fadeUp 0.2s ease forwards; }
+
+    @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0 } }
+    .streaming-cursor::after {
+      content: "▋";
+      animation: blink 0.75s step-end infinite;
+      opacity: 0.7;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 0.7s linear infinite; }
+
+    /* ── Stat divider lines ── */
+    .divider-right { transform: rotate(20deg); }
+    .divider-left  { transform: rotate(-20deg); }
+
+    /* ── Nav tab active state ── */
+    .nav-tab.active {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+    }
+
+    /* ── Chat message styles ── */
+    .answer-pre {
+      white-space: pre-wrap;
+      font-family: 'Readex Pro', monospace;
+      font-size: 0.875rem;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.85);
+    }
+    .answer-pre code {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 0.8em;
+      color: #93c5fd;
+    }
+
+    /* ── CRAG / tag badges ── */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 9px; border-radius: 99px;
+      font-size: 0.65rem; letter-spacing: 0.04em; font-weight: 500;
+    }
+    .badge-correct   { background: rgba(34,197,94,0.1);  color: #4ade80; border: 1px solid rgba(34,197,94,0.2);  }
+    .badge-ambiguous { background: rgba(251,191,36,0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+    .badge-incorrect { background: rgba(239,68,68,0.1);  color: #f87171; border: 1px solid rgba(239,68,68,0.2);  }
+    .badge-type      { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.1); }
+    .badge-cached    { background: rgba(34,197,94,0.1);  color: #4ade80; border: 1px solid rgba(34,197,94,0.2);  }
+    .badge-latency   { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.07); }
+
+    /* ── History items ── */
+    .hist-item {
+      padding: 7px 10px; border-radius: 8px; font-size: 0.75rem;
+      color: rgba(255,255,255,0.35); cursor: pointer; transition: all 0.12s;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      border: 1px solid transparent;
+    }
+    .hist-item:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); }
+
+    /* ── Filter tags ── */
+    .filter-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 99px; padding: 2px 8px; font-size: 0.68rem; color: rgba(255,255,255,0.6);
+    }
+    .filter-tag button { background: none; border: none; color: inherit; cursor: pointer; line-height: 1; }
+    .filter-tag button:hover { color: #f87171; }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">
-    <div class="logo-icon">⚡</div>
-    Production RAG
-  </div>
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!--  HERO LANDING                                              -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="landing">
+  <section class="relative h-screen w-full overflow-hidden bg-black">
 
-  <div class="nav-tabs">
-    <button class="nav-tab active" onclick="switchTab('chat', this)">Chat</button>
-    <button class="nav-tab" onclick="switchTab('search', this)">Debug Search</button>
-  </div>
+    <!-- Background video -->
+    <video
+      class="absolute inset-0 w-full h-full object-cover"
+      autoplay loop muted playsinline
+      src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_063509_7d167302-4fd4-480b-8260-18ab572333d4.mp4"
+    ></video>
 
-  <div class="header-right">
-    <div class="health-bar" id="health-bar">
-      <div class="health-dot"><div class="dot pulse" id="dot-qdrant"></div>Qdrant</div>
-      <div class="health-dot"><div class="dot pulse" id="dot-redis"></div>Redis</div>
-      <div class="health-dot"><div class="dot pulse" id="dot-llm"></div>LLM</div>
-    </div>
-  </div>
-</header>
+    <!-- Navbar -->
+    <nav class="absolute z-20 px-6 md:px-10 pt-6 top-0 left-0 right-0 flex items-center justify-between gap-4">
 
-<div class="layout">
-
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-section">
-      <h3>Session</h3>
-      <div class="row">
-        <label>Session ID</label>
-        <input id="session-id" value="default" spellcheck="false" />
-      </div>
-      <div class="row" style="margin-bottom:0">
-        <label>Top-K: <span id="topk-val">5</span></label>
-        <div class="range-row">
-          <input type="range" id="top-k" min="1" max="20" value="5" />
-        </div>
-      </div>
-    </div>
-
-    <div class="sidebar-section">
-      <h3>Metadata Filters</h3>
-      <div class="filter-tags" id="filter-tags"></div>
-      <div class="add-filter">
-        <input id="filter-key" placeholder="key" style="max-width:80px;" />
-        <input id="filter-val" placeholder="value" />
-        <button class="btn-small" onclick="addFilter()">+</button>
-      </div>
-    </div>
-
-    <div class="sidebar-section" style="padding-bottom:8px;">
-      <h3>History</h3>
-    </div>
-    <div class="history" id="history-list">
-      <div class="history-empty">No queries yet</div>
-    </div>
-  </aside>
-
-  <!-- Main area -->
-  <main class="main">
-
-    <!-- ── Chat tab ── -->
-    <div class="tab-panel active" id="tab-chat">
-      <div class="chat" id="chat">
-        <div class="empty-state" id="empty-state">
-          <div class="empty-icon">🔍</div>
-          <h2>Ask anything about your documents</h2>
-          <p>Hybrid retrieval · CRAG grading · Semantic cache · Streaming</p>
-          <div class="example-chips">
-            <div class="chip" onclick="useExample(this)">What is RAG and how does it work?</div>
-            <div class="chip" onclick="useExample(this)">Explain hybrid retrieval with RRF fusion</div>
-            <div class="chip" onclick="useExample(this)">How does CRAG improve retrieval quality?</div>
-            <div class="chip" onclick="useExample(this)">What is semantic caching?</div>
-            <div class="chip" onclick="useExample(this)">How does cross-encoder reranking work?</div>
-            <div class="chip" onclick="useExample(this)">What is Qdrant and which vector types does it support?</div>
-          </div>
-        </div>
+      <!-- Left pill -->
+      <div class="flex items-center gap-2 bg-neutral-900/90 backdrop-blur rounded-full pl-4 pr-6 py-3">
+        <svg viewBox="0 0 256 256" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 128 192 L 128 256 L 64.5 256 L 32 223 L 0 192 L 0 128 L 64 128 Z
+                   M 256 192 L 256 256 L 192.5 256 L 160 223 L 128 192 L 128 128 L 192 128 Z
+                   M 128 64 L 128 128 L 64.5 128 L 32 95 L 0 64 L 0 0 L 64 0 Z
+                   M 256 64 L 256 128 L 192.5 128 L 160 95 L 128 64 L 128 0 L 192 0 Z"
+                fill="#ffffff"/>
+        </svg>
+        <span class="text-white text-sm font-normal tracking-tight">securify</span>
       </div>
 
-      <div class="input-bar">
-        <div class="input-row">
-          <div class="input-wrap">
-            <textarea id="query-input" placeholder="Ask a question… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
-          </div>
-          <button class="send-btn" id="send-btn" onclick="sendQuery()" title="Send">&#10148;</button>
-        </div>
-        <div class="input-footer">
-          <div class="toggle-row">
-            <input type="checkbox" id="use-stream" checked />
-            <label for="use-stream">Stream tokens</label>
-          </div>
-          <div style="color:var(--border)">|</div>
-          <span><kbd class="kbd">Enter</kbd> send &nbsp;<kbd class="kbd">⇧ Enter</kbd> newline</span>
-          <div style="margin-left:auto;">
-            <button class="btn-small" onclick="clearChat()">Clear</button>
-          </div>
-        </div>
+      <!-- Center pill -->
+      <div class="hidden md:flex items-center gap-1 bg-neutral-900/90 backdrop-blur rounded-full px-3 py-2">
+        <a href="#" class="text-neutral-300 hover:text-white transition-colors text-sm px-5 py-2 rounded-full">platform</a>
+        <a href="#" class="text-neutral-300 hover:text-white transition-colors text-sm px-5 py-2 rounded-full">solutions</a>
+        <a href="#" class="text-neutral-300 hover:text-white transition-colors text-sm px-5 py-2 rounded-full">company</a>
+        <a href="#" class="text-neutral-300 hover:text-white transition-colors text-sm px-5 py-2 rounded-full">support</a>
       </div>
-    </div>
 
-    <!-- ── Search/Debug tab ── -->
-    <div class="tab-panel" id="tab-search">
-      <div class="search-panel">
-        <div class="panel-header">
-          <div class="input-wrap">
-            <input id="search-input" placeholder="Search query for raw retrieval…" onkeydown="if(event.key==='Enter')runSearch()" />
-          </div>
-          <button class="btn-small" onclick="runSearch()" id="search-btn">Search</button>
+      <!-- CTA -->
+      <button onclick="openApp()"
+        class="bg-white text-black text-sm font-normal rounded-full px-6 py-3 hover:bg-neutral-200 transition-colors">
+        get started
+      </button>
+    </nav>
+
+    <!-- Foreground content -->
+    <div class="relative h-full w-full">
+
+      <!-- Staggered titles -->
+      <h1 class="hero-title absolute text-white font-medium text-[14vw] md:text-[13vw] left-4 md:left-10" style="top:18%">protect</h1>
+      <h1 class="hero-title absolute text-white font-medium text-[14vw] md:text-[13vw] right-4 md:right-10" style="top:38%">your</h1>
+      <h1 class="hero-title absolute text-white font-medium text-[14vw] md:text-[13vw] left-[18%] md:left-[28%]" style="top:58%">data</h1>
+
+      <!-- Description -->
+      <p class="absolute left-6 md:left-10 text-[15px] leading-snug text-white/90 max-w-[240px]" style="top:46%">
+        we can guarding your data with utmost care, empowering you with privacy everywhere
+      </p>
+
+      <!-- Stat: top-right -->
+      <div class="absolute right-6 md:right-24" style="top:14%">
+        <div class="flex items-center gap-3 justify-end">
+          <div class="hidden md:block h-px w-24 bg-white/40 divider-right"></div>
+          <span class="text-4xl md:text-5xl font-medium tracking-tight">+65k</span>
         </div>
-        <div class="search-latency" id="search-latency" style="display:none"></div>
-        <div class="panel-body" id="search-body">
-          <div class="search-empty">Enter a query to inspect raw retrieval chunks</div>
-        </div>
+        <p class="text-xs md:text-sm text-white/70 mt-1 text-right">startups use</p>
       </div>
-    </div>
 
-  </main>
+      <!-- Bottom gradient -->
+      <div class="pointer-events-none absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-b from-transparent to-black"></div>
+
+      <!-- Stat: bottom-left -->
+      <div class="absolute left-6 md:left-20 bottom-20 md:bottom-24">
+        <div class="flex items-center gap-3">
+          <span class="text-4xl md:text-5xl font-medium tracking-tight">+1.5b</span>
+          <div class="hidden md:block h-px w-24 bg-white/40 divider-left"></div>
+        </div>
+        <p class="text-xs md:text-sm text-white/70 mt-1">gb data was protected</p>
+      </div>
+
+      <!-- Stat: bottom-right -->
+      <div class="absolute right-6 md:right-20 bottom-16 md:bottom-20">
+        <div class="flex items-center gap-3 justify-end">
+          <div class="hidden md:block h-px w-24 bg-white/40 divider-left"></div>
+          <span class="text-4xl md:text-5xl font-medium tracking-tight">+300k</span>
+        </div>
+        <p class="text-xs md:text-sm text-white/70 mt-1 text-right">downloads</p>
+      </div>
+
+    </div>
+  </section>
 </div>
 
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!--  APP OVERLAY                                               -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="app" class="fixed inset-0 z-50 bg-black flex flex-col">
+
+  <!-- App navbar -->
+  <nav class="flex-shrink-0 flex items-center justify-between gap-4 px-6 md:px-10 pt-5 pb-4">
+
+    <!-- Left pill -->
+    <div class="flex items-center gap-2 bg-neutral-900/90 backdrop-blur rounded-full pl-4 pr-6 py-2.5">
+      <svg viewBox="0 0 256 256" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 128 192 L 128 256 L 64.5 256 L 32 223 L 0 192 L 0 128 L 64 128 Z
+                 M 256 192 L 256 256 L 192.5 256 L 160 223 L 128 192 L 128 128 L 192 128 Z
+                 M 128 64 L 128 128 L 64.5 128 L 32 95 L 0 64 L 0 0 L 64 0 Z
+                 M 256 64 L 256 128 L 192.5 128 L 160 95 L 128 64 L 128 0 L 192 0 Z"
+              fill="#ffffff"/>
+      </svg>
+      <span class="text-white text-sm font-normal tracking-tight">securify rag</span>
+    </div>
+
+    <!-- Center tabs -->
+    <div class="hidden md:flex items-center gap-1 bg-neutral-900/90 backdrop-blur rounded-full px-2 py-2">
+      <button class="nav-tab active text-white text-sm px-5 py-1.5 rounded-full transition-colors"
+              onclick="switchAppTab('chat', this)">chat</button>
+      <button class="nav-tab text-neutral-400 hover:text-white text-sm px-5 py-1.5 rounded-full transition-colors"
+              onclick="switchAppTab('search', this)">debug search</button>
+    </div>
+
+    <!-- Right: health dots + back -->
+    <div class="flex items-center gap-3">
+      <div class="hidden md:flex items-center gap-3 bg-neutral-900/90 backdrop-blur rounded-full px-4 py-2.5">
+        <span class="flex items-center gap-1.5 text-xs text-neutral-500">
+          <span class="w-1.5 h-1.5 rounded-full bg-neutral-600" id="dot-qdrant"></span>qdrant
+        </span>
+        <span class="flex items-center gap-1.5 text-xs text-neutral-500">
+          <span class="w-1.5 h-1.5 rounded-full bg-neutral-600" id="dot-redis"></span>redis
+        </span>
+        <span class="flex items-center gap-1.5 text-xs text-neutral-500">
+          <span class="w-1.5 h-1.5 rounded-full bg-neutral-600" id="dot-llm"></span>llm
+        </span>
+      </div>
+      <button onclick="closeApp()"
+        class="text-neutral-400 hover:text-white bg-neutral-900/90 backdrop-blur rounded-full px-5 py-2.5 text-sm transition-colors">
+        ← back
+      </button>
+    </div>
+  </nav>
+
+  <!-- App body -->
+  <div class="flex flex-1 overflow-hidden border-t border-white/5">
+
+    <!-- Sidebar -->
+    <aside class="hidden md:flex w-60 border-r border-white/5 flex-col flex-shrink-0">
+
+      <div class="p-4 border-b border-white/5 space-y-3">
+        <p class="text-[9px] uppercase tracking-widest text-neutral-600">session</p>
+        <div>
+          <label class="text-xs text-neutral-500 block mb-1">session id</label>
+          <input id="session-id" value="default" spellcheck="false"
+            class="w-full bg-white/5 border border-white/8 rounded-xl text-white text-xs px-3 py-2 outline-none focus:border-white/25 transition-colors" />
+        </div>
+        <div>
+          <label class="text-xs text-neutral-500 block mb-1">top-k: <span id="topk-val" class="text-white">5</span></label>
+          <input type="range" id="top-k" min="1" max="20" value="5"
+            oninput="document.getElementById('topk-val').textContent=this.value"
+            class="w-full accent-white cursor-pointer" />
+        </div>
+      </div>
+
+      <div class="p-4 border-b border-white/5 space-y-2">
+        <p class="text-[9px] uppercase tracking-widest text-neutral-600">filters</p>
+        <div id="filter-tags" class="flex flex-wrap gap-1 min-h-[4px]"></div>
+        <div class="flex gap-1.5">
+          <input id="filter-key" placeholder="key"
+            class="w-14 bg-white/5 border border-white/8 rounded-lg text-white text-xs px-2 py-1.5 outline-none focus:border-white/25" />
+          <input id="filter-val" placeholder="value"
+            class="flex-1 bg-white/5 border border-white/8 rounded-lg text-white text-xs px-2 py-1.5 outline-none focus:border-white/25" />
+          <button onclick="addFilter()"
+            class="bg-white/8 hover:bg-white/15 text-white text-xs rounded-lg px-2.5 py-1.5 transition-colors">+</button>
+        </div>
+      </div>
+
+      <div class="px-4 pt-4 pb-2">
+        <p class="text-[9px] uppercase tracking-widest text-neutral-600">history</p>
+      </div>
+      <div class="flex-1 overflow-y-auto px-3 pb-3" id="history-list">
+        <p class="text-xs text-neutral-700 text-center mt-6">no queries yet</p>
+      </div>
+    </aside>
+
+    <!-- Main panel -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+      <!-- ── CHAT TAB ── -->
+      <div id="app-tab-chat" class="app-tab flex flex-col flex-1 overflow-hidden">
+
+        <!-- Messages -->
+        <div class="flex-1 overflow-y-auto px-6 md:px-10 py-8 flex flex-col gap-5" id="chat">
+          <!-- Empty state -->
+          <div id="empty-state" class="flex flex-col items-center justify-center h-full gap-6 text-center">
+            <p class="hero-title text-[10vw] md:text-[6vw] font-medium text-white/5 select-none">ask</p>
+            <p class="text-sm text-neutral-600 max-w-xs leading-relaxed">
+              hybrid retrieval · crag grading · semantic cache · streaming
+            </p>
+            <div class="flex flex-wrap justify-center gap-2 max-w-xl">
+              <span onclick="useExample(this)" class="px-4 py-2 bg-white/5 hover:bg-white/8 border border-white/8 rounded-full text-xs text-neutral-400 cursor-pointer transition-colors">what is rag and how does it work?</span>
+              <span onclick="useExample(this)" class="px-4 py-2 bg-white/5 hover:bg-white/8 border border-white/8 rounded-full text-xs text-neutral-400 cursor-pointer transition-colors">explain hybrid retrieval with rrf fusion</span>
+              <span onclick="useExample(this)" class="px-4 py-2 bg-white/5 hover:bg-white/8 border border-white/8 rounded-full text-xs text-neutral-400 cursor-pointer transition-colors">how does crag improve retrieval quality?</span>
+              <span onclick="useExample(this)" class="px-4 py-2 bg-white/5 hover:bg-white/8 border border-white/8 rounded-full text-xs text-neutral-400 cursor-pointer transition-colors">what is semantic caching?</span>
+              <span onclick="useExample(this)" class="px-4 py-2 bg-white/5 hover:bg-white/8 border border-white/8 rounded-full text-xs text-neutral-400 cursor-pointer transition-colors">how does cross-encoder reranking work?</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input bar -->
+        <div class="flex-shrink-0 border-t border-white/5 px-6 md:px-10 py-4">
+          <div class="flex gap-3 items-end">
+            <textarea id="query-input" rows="1"
+              placeholder="ask anything about your documents…"
+              class="flex-1 bg-white/5 border border-white/10 rounded-2xl text-white text-sm px-4 py-3 outline-none focus:border-white/25 resize-none leading-relaxed transition-colors placeholder:text-neutral-700 min-h-[46px] max-h-[140px]"></textarea>
+            <button id="send-btn" onclick="sendQuery()"
+              class="bg-white hover:bg-neutral-200 text-black text-sm font-normal rounded-2xl px-5 py-3 transition-colors flex-shrink-0 h-[46px]">
+              send
+            </button>
+          </div>
+          <div class="flex items-center gap-4 mt-2.5 text-xs text-neutral-700">
+            <label class="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" id="use-stream" checked class="accent-white w-3 h-3" />
+              <span>stream</span>
+            </label>
+            <span class="text-white/5">|</span>
+            <span>enter to send</span>
+            <button onclick="clearChat()" class="ml-auto hover:text-neutral-400 transition-colors">clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SEARCH/DEBUG TAB ── -->
+      <div id="app-tab-search" class="app-tab hidden flex flex-col flex-1 overflow-hidden">
+        <div class="flex-shrink-0 px-6 md:px-10 py-4 border-b border-white/5 flex gap-3">
+          <input id="search-input" placeholder="search for raw retrieval chunks…"
+            onkeydown="if(event.key==='Enter')runSearch()"
+            class="flex-1 bg-white/5 border border-white/10 rounded-2xl text-white text-sm px-4 py-3 outline-none focus:border-white/25 transition-colors placeholder:text-neutral-700" />
+          <button id="search-btn" onclick="runSearch()"
+            class="bg-white hover:bg-neutral-200 text-black text-sm rounded-2xl px-5 py-3 transition-colors">
+            search
+          </button>
+        </div>
+        <div id="search-latency" class="hidden px-6 md:px-10 py-2 text-xs text-neutral-600"></div>
+        <div id="search-body" class="flex-1 overflow-y-auto px-6 md:px-10 py-5 flex flex-col gap-3">
+          <p class="text-sm text-neutral-700 text-center mt-10">enter a query to inspect raw retrieval chunks</p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+
 <script>
-  const API = '';  // same origin
+  const API = '';
   let filters = {};
   let queryHistory = [];
-  let isStreaming = false;
+  let isBusy = false;
+
+  // ── Landing ↔ App transitions ─────────────────────────────────────────────
+  function openApp() {
+    document.getElementById('landing').classList.add('hidden-landing');
+    const app = document.getElementById('app');
+    app.classList.add('open');
+    pollHealth();
+    document.getElementById('query-input').focus();
+  }
+
+  function closeApp() {
+    document.getElementById('app').classList.remove('open');
+    document.getElementById('landing').classList.remove('hidden-landing');
+  }
 
   // ── Tab switching ─────────────────────────────────────────────────────────
-  function switchTab(name, btn) {
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-    document.getElementById('tab-' + name).classList.add('active');
-    btn.classList.add('active');
+  function switchAppTab(name, btn) {
+    document.querySelectorAll('.app-tab').forEach(t => t.classList.add('hidden'));
+    document.getElementById('app-tab-' + name).classList.remove('hidden');
+    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active', 'text-white'));
+    document.querySelectorAll('.nav-tab').forEach(b => b.classList.add('text-neutral-400'));
+    btn.classList.add('active', 'text-white');
+    btn.classList.remove('text-neutral-400');
   }
 
   // ── Health polling ─────────────────────────────────────────────────────────
@@ -532,16 +420,18 @@
       const data = await r.json();
       data.components.forEach(c => {
         const dot = document.getElementById(`dot-${c.name}`);
-        if (dot) dot.className = 'dot ' + (c.healthy ? 'ok' : 'err');
+        if (!dot) return;
+        dot.className = 'w-1.5 h-1.5 rounded-full ' + (c.healthy
+          ? 'bg-green-400 shadow-[0_0_6px_#4ade80]'
+          : 'bg-red-400 shadow-[0_0_6px_#f87171]');
       });
     } catch {
       ['qdrant','redis','llm'].forEach(n => {
         const d = document.getElementById(`dot-${n}`);
-        if (d) d.className = 'dot err';
+        if (d) d.className = 'w-1.5 h-1.5 rounded-full bg-red-400 shadow-[0_0_6px_#f87171]';
       });
     }
   }
-  pollHealth();
   setInterval(pollHealth, 20000);
 
   // ── Filters ───────────────────────────────────────────────────────────────
@@ -558,23 +448,20 @@
   function renderFilters() {
     document.getElementById('filter-tags').innerHTML =
       Object.entries(filters).map(([k,v]) =>
-        `<span class="filter-tag"><b>${esc(k)}</b>: ${esc(v)}<button onclick="removeFilter('${esc(k)}')">×</button></span>`
-      ).join('') || '';
+        `<span class="filter-tag"><b>${esc(k)}</b>:${esc(v)}<button onclick="removeFilter('${esc(k)}')">×</button></span>`
+      ).join('');
   }
 
-  document.getElementById('top-k').addEventListener('input', e => {
-    document.getElementById('topk-val').textContent = e.target.value;
-  });
-
-  // ── Textarea auto-resize + keyboard ──────────────────────────────────────
+  // ── Textarea ──────────────────────────────────────────────────────────────
   const ta = document.getElementById('query-input');
   ta.addEventListener('input', () => {
     ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 150) + 'px';
+    ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
   });
   ta.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuery(); }
   });
+
   function useExample(el) {
     ta.value = el.textContent.trim();
     ta.dispatchEvent(new Event('input'));
@@ -589,11 +476,11 @@
   function renderHistory() {
     const el = document.getElementById('history-list');
     if (!queryHistory.length) {
-      el.innerHTML = '<div class="history-empty">No queries yet</div>';
+      el.innerHTML = '<p class="text-xs text-neutral-700 text-center mt-6">no queries yet</p>';
       return;
     }
     el.innerHTML = queryHistory.map((q, i) =>
-      `<div class="history-item" onclick="reuseHistory(${i})" title="${esc(q)}">${esc(q)}</div>`
+      `<div class="hist-item" onclick="reuseHistory(${i})" title="${esc(q)}">${esc(q)}</div>`
     ).join('');
   }
   function reuseHistory(i) {
@@ -603,149 +490,140 @@
   }
 
   // ── Chat helpers ──────────────────────────────────────────────────────────
-  function hideEmpty() {
-    const el = document.getElementById('empty-state');
-    if (el) el.remove();
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+
   function scrollChat() {
     const c = document.getElementById('chat');
     c.scrollTop = c.scrollHeight;
   }
 
-  function esc(s) {
-    return String(s)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  function hideEmpty() {
+    const el = document.getElementById('empty-state');
+    if (el) el.remove();
   }
 
   function renderAnswer(text) {
-    // Minimal markdown: fenced code blocks, inline code
-    let html = '';
-    const lines = text.split('\n');
-    let inCode = false;
-    let codeLines = [];
-    let codeLang = '';
-    for (const line of lines) {
+    // Basic markdown: fenced code blocks + inline code
+    let html = '', inCode = false, codeLang = '', codeLines = [];
+    for (const line of text.split('\n')) {
       if (!inCode && line.startsWith('```')) {
-        inCode = true;
-        codeLang = line.slice(3).trim();
-        codeLines = [];
-        continue;
+        inCode = true; codeLang = line.slice(3).trim(); codeLines = []; continue;
       }
       if (inCode && line.startsWith('```')) {
         inCode = false;
-        html += `<pre><code${codeLang ? ` class="lang-${esc(codeLang)}"` : ''}>${esc(codeLines.join('\n'))}</code></pre>`;
+        html += `<pre style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;margin:8px 0;overflow-x:auto;"><code style="font-size:0.8rem;color:rgba(255,255,255,0.8);white-space:pre;">${esc(codeLines.join('\n'))}</code></pre>\n`;
         continue;
       }
       if (inCode) { codeLines.push(line); continue; }
-      // inline code
-      const escapedLine = esc(line).replace(/`([^`]+)`/g, '<code>$1</code>');
-      html += escapedLine + '\n';
+      html += esc(line).replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;font-size:0.82em;color:#93c5fd;">$1</code>') + '\n';
     }
-    if (inCode && codeLines.length) html += `<pre><code>${esc(codeLines.join('\n'))}</code></pre>`;
-    return `<div class="answer-text">${html.trimEnd()}</div>`;
+    return `<div class="answer-pre">${html.trimEnd()}</div>`;
   }
 
   function appendUser(query) {
     hideEmpty();
     const div = document.createElement('div');
-    div.className = 'msg-user';
-    div.textContent = query;
+    div.className = 'msg-anim self-end max-w-[72%]';
+    div.innerHTML = `
+      <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:18px 18px 4px 18px;padding:11px 16px;font-size:0.875rem;line-height:1.55;color:rgba(255,255,255,0.9);">
+        ${esc(query)}
+      </div>`;
     document.getElementById('chat').appendChild(div);
     scrollChat();
   }
 
   function appendAssistantPlaceholder() {
+    hideEmpty();
     const wrap = document.createElement('div');
-    wrap.className = 'msg-assistant';
-    const id = 'body-' + Date.now();
-    const mid = 'meta-' + Date.now();
+    wrap.className = 'msg-anim flex flex-col gap-2 max-w-[85%]';
+    const uid = 'b' + Date.now();
+    const mid = 'm' + Date.now();
     wrap.innerHTML = `
-      <div class="msg-header">
-        <div class="msg-avatar">⚡</div>
-        <div class="msg-meta" id="${mid}">
-          <span class="spinner"></span>
-        </div>
+      <div class="flex items-center gap-2 mb-1">
+        <div style="width:22px;height:22px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;">⚡</div>
+        <span class="text-xs text-neutral-600" id="${mid}">
+          <svg class="spin inline w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="60" stroke-dashoffset="60" opacity="0.3"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+        </span>
       </div>
-      <div class="msg-body streaming" id="${id}"></div>
-    `;
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:4px 18px 18px 18px;padding:14px 18px;" id="${uid}" class="streaming-cursor"></div>`;
     document.getElementById('chat').appendChild(wrap);
     scrollChat();
-    return { wrap, bodyId: id, metaId: mid };
+    return { wrap, bodyId: uid, metaId: mid };
   }
 
   function finalizeAssistant(bodyEl, metaEl, rawText, data) {
-    bodyEl.classList.remove('streaming');
+    bodyEl.classList.remove('streaming-cursor');
     bodyEl.innerHTML = renderAnswer(rawText);
 
-    // Grade / type / cache / latency tags
-    const gradeMap = { correct:'tag-correct', ambiguous:'tag-ambiguous', incorrect:'tag-incorrect' };
-    const gradeClass = data.crag_grade ? (gradeMap[data.crag_grade] || '') : '';
-    const tags = [
-      data.crag_grade ? `<span class="tag ${gradeClass}">CRAG: ${esc(data.crag_grade)}</span>` : '',
-      data.query_type ? `<span class="tag tag-type">${esc(data.query_type)}</span>` : '',
-      data.cached     ? `<span class="tag tag-cached">⚡ cached</span>` : '',
-      data.latency_ms ? `<span class="tag tag-latency">${Math.round(data.latency_ms)} ms</span>` : '',
+    // Badges
+    const gradeMap = { correct:'badge-correct', ambiguous:'badge-ambiguous', incorrect:'badge-incorrect' };
+    const grade = data.crag_grade || data.grade;
+    const badges = [
+      grade ? `<span class="badge ${gradeMap[grade]||'badge-type'}">crag: ${esc(grade)}</span>` : '',
+      data.query_type ? `<span class="badge badge-type">${esc(data.query_type)}</span>` : '',
+      data.cached ? `<span class="badge badge-cached">⚡ cached</span>` : '',
+      data.latency_ms ? `<span class="badge badge-latency">${Math.round(data.latency_ms)} ms</span>` : '',
     ].filter(Boolean).join('');
-    if (tags) {
-      const t = document.createElement('div');
-      t.className = 'tags';
-      t.innerHTML = tags;
-      bodyEl.appendChild(t);
+    if (badges) {
+      const bd = document.createElement('div');
+      bd.className = 'flex flex-wrap gap-1.5 mt-2';
+      bd.innerHTML = badges;
+      bodyEl.appendChild(bd);
     }
 
     // Citations
     const cits = data.citations || [];
     if (cits.length) {
-      const cDiv = document.createElement('div');
-      cDiv.className = 'citations';
-      cDiv.innerHTML = `<div class="citations-title">Sources (${cits.length})</div>` +
+      const cd = document.createElement('div');
+      cd.style.cssText = 'margin-top:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;';
+      cd.innerHTML = `<p style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.3);margin-bottom:6px;">sources (${cits.length})</p>` +
         cits.map((c, i) => `
-          <div class="citation">
-            <div class="citation-num">${i+1}</div>
-            <div class="citation-body">
-              <div class="citation-source">${esc(c.source || 'unknown')}</div>
-              <div class="citation-text">${esc(c.text || '')}</div>
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:4px;">
+            <span style="min-width:18px;height:18px;background:rgba(255,255,255,0.06);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;color:rgba(255,255,255,0.4);flex-shrink:0;">${i+1}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:0.72rem;color:rgba(255,255,255,0.5);font-weight:500;margin-bottom:2px;">${esc(c.source||'unknown')}</div>
+              <div style="font-size:0.72rem;color:rgba(255,255,255,0.3);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${esc(c.text||'')}</div>
             </div>
-            <div class="citation-score">${(c.score||0).toFixed(3)}</div>
+            <span style="font-size:0.68rem;color:rgba(255,255,255,0.2);flex-shrink:0;">${(c.score||0).toFixed(3)}</span>
           </div>`).join('');
-      bodyEl.appendChild(cDiv);
+      bodyEl.appendChild(cd);
     }
 
-    metaEl.textContent = new Date().toLocaleTimeString();
+    metaEl.innerHTML = `<span style="color:rgba(255,255,255,0.25)">${new Date().toLocaleTimeString()}</span>`;
     scrollChat();
   }
 
   function appendError(msg) {
     hideEmpty();
     const div = document.createElement('div');
-    div.className = 'msg-error';
-    div.textContent = '⚠ ' + msg;
+    div.className = 'msg-anim';
+    div.innerHTML = `<div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:10px 14px;font-size:0.84rem;color:#f87171;">⚠ ${esc(msg)}</div>`;
     document.getElementById('chat').appendChild(div);
     scrollChat();
   }
 
   function clearChat() {
     const chat = document.getElementById('chat');
-    chat.innerHTML = `<div class="empty-state" id="empty-state">
-      <div class="empty-icon">🔍</div>
-      <h2>Ask anything about your documents</h2>
-      <p>Hybrid retrieval · CRAG grading · Semantic cache · Streaming</p>
-      <div class="example-chips">
-        <div class="chip" onclick="useExample(this)">What is RAG and how does it work?</div>
-        <div class="chip" onclick="useExample(this)">Explain hybrid retrieval with RRF fusion</div>
-        <div class="chip" onclick="useExample(this)">How does CRAG improve retrieval quality?</div>
-        <div class="chip" onclick="useExample(this)">What is semantic caching?</div>
-        <div class="chip" onclick="useExample(this)">How does cross-encoder reranking work?</div>
-        <div class="chip" onclick="useExample(this)">What is Qdrant and which vector types does it support?</div>
-      </div>
-    </div>`;
+    chat.innerHTML = `
+      <div id="empty-state" class="flex flex-col items-center justify-center h-full gap-6 text-center">
+        <p class="hero-title text-[10vw] md:text-[6vw] font-medium text-white/5 select-none">ask</p>
+        <p class="text-sm text-neutral-600 max-w-xs leading-relaxed">hybrid retrieval · crag grading · semantic cache · streaming</p>
+        <div class="flex flex-wrap justify-center gap-2 max-w-xl">
+          <span onclick="useExample(this)" class="px-4 py-2 bg-white/5 hover:bg-white/8 border border-white/8 rounded-full text-xs text-neutral-400 cursor-pointer transition-colors">what is rag and how does it work?</span>
+          <span onclick="useExample(this)" class="px-4 py-2 bg-white/5 hover:bg-white/8 border border-white/8 rounded-full text-xs text-neutral-400 cursor-pointer transition-colors">explain hybrid retrieval with rrf fusion</span>
+          <span onclick="useExample(this)" class="px-4 py-2 bg-white/5 hover:bg-white/8 border border-white/8 rounded-full text-xs text-neutral-400 cursor-pointer transition-colors">how does crag improve retrieval quality?</span>
+          <span onclick="useExample(this)" class="px-4 py-2 bg-white/5 hover:bg-white/8 border border-white/8 rounded-full text-xs text-neutral-400 cursor-pointer transition-colors">what is semantic caching?</span>
+          <span onclick="useExample(this)" class="px-4 py-2 bg-white/5 hover:bg-white/8 border border-white/8 rounded-full text-xs text-neutral-400 cursor-pointer transition-colors">how does cross-encoder reranking work?</span>
+        </div>
+      </div>`;
   }
 
   // ── Send query ─────────────────────────────────────────────────────────────
   async function sendQuery() {
     const query = ta.value.trim();
-    if (!query || isStreaming) return;
+    if (!query || isBusy) return;
 
     const sessionId = document.getElementById('session-id').value.trim() || 'default';
     const topK = parseInt(document.getElementById('top-k').value);
@@ -754,7 +632,7 @@
 
     ta.value = ''; ta.style.height = 'auto';
     btn.disabled = true;
-    isStreaming = true;
+    isBusy = true;
 
     appendUser(query);
     addToHistory(query);
@@ -766,7 +644,7 @@
       else await sendJson(payload);
     } finally {
       btn.disabled = false;
-      isStreaming = false;
+      isBusy = false;
     }
   }
 
@@ -790,7 +668,7 @@
     }
   }
 
-  // SSE streaming mode — correct multi-data-line parsing per SSE spec
+  // SSE streaming mode — CRLF-safe block parser
   async function sendStream(payload) {
     const { wrap, bodyId, metaId } = appendAssistantPlaceholder();
     const bodyEl = document.getElementById(bodyId);
@@ -813,25 +691,19 @@
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        // Normalize CRLF → LF so block splitting works regardless of server line endings
+        // Normalize CRLF → LF (sse_starlette uses CRLF)
         buf += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
 
-        // SSE blocks are separated by \n\n
         const blocks = buf.split('\n\n');
-        buf = blocks.pop(); // keep incomplete trailing block
+        buf = blocks.pop();
 
         for (const block of blocks) {
           if (!block.trim()) continue;
           let evtType = '';
           const dataLines = [];
-
           for (const line of block.split('\n')) {
-            if (line.startsWith('event: ')) {
-              evtType = line.slice(7).trim();
-            } else if (line.startsWith('data: ')) {
-              // Per SSE spec multiple data: lines join with \n
-              dataLines.push(line.slice(6));
-            }
+            if (line.startsWith('event: ')) evtType = line.slice(7).trim();
+            else if (line.startsWith('data: ')) dataLines.push(line.slice(6));
           }
           const evtData = dataLines.join('\n');
 
@@ -844,8 +716,7 @@
           } else if (evtType === 'done') {
             try {
               const d = JSON.parse(evtData);
-              // pipeline sends "grade" not "crag_grade"
-              if (d.grade) d.crag_grade = d.grade;
+              if (d.grade && !d.crag_grade) d.crag_grade = d.grade;
               Object.assign(metaData, d);
             } catch {}
           } else if (evtType === 'error') {
@@ -855,14 +726,13 @@
       }
 
       finalizeAssistant(bodyEl, metaEl, fullText, { answer: fullText, ...metaData });
-
     } catch(e) {
       wrap.remove();
       appendError(e.message);
     }
   }
 
-  // ── Debug Search panel ─────────────────────────────────────────────────────
+  // ── Debug search ──────────────────────────────────────────────────────────
   async function runSearch() {
     const query = document.getElementById('search-input').value.trim();
     if (!query) return;
@@ -870,10 +740,9 @@
     const body = document.getElementById('search-body');
     const lat = document.getElementById('search-latency');
 
-    btn.disabled = true;
-    btn.textContent = 'Searching…';
-    body.innerHTML = '<div class="search-empty"><span class="spinner"></span></div>';
-    lat.style.display = 'none';
+    btn.disabled = true; btn.textContent = '…';
+    body.innerHTML = '<p class="text-sm text-neutral-700 text-center mt-10">searching…</p>';
+    lat.classList.add('hidden');
 
     try {
       const topK = parseInt(document.getElementById('top-k').value);
@@ -882,32 +751,30 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, top_k: topK, filters }),
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
 
-      lat.style.display = 'block';
-      lat.textContent = `Retrieved ${data.chunks.length} chunk${data.chunks.length !== 1 ? 's' : ''} in ${Math.round(data.latency_ms)} ms`;
+      lat.textContent = `${data.chunks.length} chunk${data.chunks.length !== 1 ? 's' : ''} · ${Math.round(data.latency_ms)} ms`;
+      lat.classList.remove('hidden');
 
       if (!data.chunks.length) {
-        body.innerHTML = '<div class="search-empty">No chunks found</div>';
+        body.innerHTML = '<p class="text-sm text-neutral-700 text-center mt-10">no chunks found</p>';
         return;
       }
 
       body.innerHTML = data.chunks.map((c, i) => `
-        <div class="chunk-card">
-          <div class="chunk-header">
-            <div class="chunk-source">#${i+1} ${esc(c.source || c.id)}</div>
-            <div class="chunk-score-badge">${(c.score||0).toFixed(4)}</div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:0.75rem;color:rgba(255,255,255,0.5);font-weight:500;">#${i+1} ${esc(c.source||c.id)}</span>
+            <span style="font-size:0.68rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:99px;padding:2px 8px;color:rgba(255,255,255,0.4);">${(c.score||0).toFixed(4)}</span>
           </div>
-          <div class="chunk-meta">ID: ${esc(c.id)} ${Object.keys(c.metadata||{}).length ? '· ' + Object.entries(c.metadata).map(([k,v])=>`${esc(k)}: ${esc(String(v))}`).join(' · ') : ''}</div>
-          <div class="chunk-text">${esc(c.content)}</div>
+          ${Object.keys(c.metadata||{}).length ? `<p style="font-size:0.68rem;color:rgba(255,255,255,0.25);margin-bottom:6px;">${Object.entries(c.metadata).map(([k,v])=>`${esc(k)}: ${esc(String(v))}`).join(' · ')}</p>` : ''}
+          <p style="font-size:0.8rem;color:rgba(255,255,255,0.45);line-height:1.6;white-space:pre-wrap;">${esc(c.content)}</p>
         </div>`).join('');
-
     } catch(e) {
-      body.innerHTML = `<div class="search-empty" style="color:var(--red)">⚠ ${esc(e.message)}</div>`;
+      body.innerHTML = `<p style="color:#f87171;font-size:0.84rem;text-align:center;margin-top:40px;">⚠ ${esc(e.message)}</p>`;
     } finally {
-      btn.disabled = false;
-      btn.textContent = 'Search';
+      btn.disabled = false; btn.textContent = 'search';
     }
   }
 </script>
