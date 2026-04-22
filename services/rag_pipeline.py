@@ -194,13 +194,11 @@ class RAGPipeline:
             )
             if web_chunks:
                 good_chunks = web_chunks
-                grade = CRAGGrade.AMBIGUOUS
             else:
                 yield StreamEvent(event="token", data="I couldn't find reliable information in my knowledge base or on the web. Please try rephrasing your question.")
                 yield StreamEvent(event="done", data={"cached": False, "grade": "incorrect", "trace_id": trace_id})
                 return
-
-        if grade == CRAGGrade.AMBIGUOUS:
+        elif grade == CRAGGrade.AMBIGUOUS:
             sub_queries = await self._decomposer.decompose(standalone_query)
             extra = await self._crag.retrieve_and_merge(sub_queries, filters)
             good_chunks = self._deduplicate(good_chunks + extra)
