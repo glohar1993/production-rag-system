@@ -94,18 +94,28 @@ class RAGPipeline:
         grade, good_chunks = await self._grader.grade(standalone_query, chunks)
 
         if grade == CRAGGrade.INCORRECT:
-            # Refuse gracefully — no good evidence
-            answer = (
-                "I couldn't find reliable information to answer your question. "
-                "Please try rephrasing or provide more context."
+            # Nothing in the index — fall back to live web search
+            log.info("crag_incorrect_web_fallback", query=standalone_query[:60])
+            web_chunks = await self._web.search(
+                standalone_query, max_results=settings.crag_max_web_results
             )
-            return QueryResponse(
-                answer=answer,
-                crag_grade=grade,
-                query_type=query_type,
-                trace_id=trace_id,
-                latency_ms=(time.perf_counter() - start) * 1000,
-            )
+            if web_chunks:
+                good_chunks = web_chunks
+                grade = CRAGGrade.AMBIGUOUS  # we have external data now
+                log.info("web_fallback_succeeded", n_chunks=len(web_chunks))
+            else:
+                # Web also came up empty — refuse rather than hallucinate
+                answer = (
+                    "I couldn't find reliable information in my knowledge base or on the web. "
+                    "Please try rephrasing your question."
+                )
+                return QueryResponse(
+                    answer=answer,
+                    crag_grade=CRAGGrade.INCORRECT,
+                    query_type=query_type,
+                    trace_id=trace_id,
+                    latency_ms=(time.perf_counter() - start) * 1000,
+                )
 
         if grade == CRAGGrade.AMBIGUOUS:
             # Decompose + re-retrieve to fill gaps
