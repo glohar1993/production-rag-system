@@ -1,65 +1,47 @@
-"""Web search fallback tool for CRAG agent."""
+"""Web search fallback tool — real results via duckduckgo-search library."""
 from __future__ import annotations
 import uuid
-import httpx
+import asyncio
 import structlog
 from app.models import DocumentChunk
 
 log = structlog.get_logger(__name__)
 
-DUCKDUCKGO_URL = "https://api.duckduckgo.com/"
-
 
 class WebSearchTool:
     """
-    Lightweight web search using DuckDuckGo Instant Answer API.
-    Used as a fallback when vector store retrieval yields low-confidence results.
+    Real web search using the duckduckgo-search library (no API key required).
+    Falls back to an older DDGS text interface if the primary method fails.
+    Called when CRAG grades retrieval as INCORRECT (nothing useful in the index).
     """
 
-    def __init__(self, timeout: float = 10.0) -> None:
-        self._timeout = timeout
-
     async def search(self, query: str, max_results: int = 3) -> list[DocumentChunk]:
-        """Return web results as DocumentChunks."""
+        """Run a web search and return results as DocumentChunks."""
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.get(
-                    DUCKDUCKGO_URL,
-                    params={"q": query, "format": "json", "no_redirect": "1", "no_html": "1"},
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            results = await asyncio.to_thread(self._sync_search, query, max_results)
+            log.info("web_search_results", query=query[:60], n=len(results))
+            return results
         except Exception as exc:
             log.warning("web_search_failed", query=query[:60], error=str(exc))
             return []
 
+    def _sync_search(self, query: str, max_results: int) -> list[DocumentChunk]:
+        from duckduckgo_search import DDGS
         chunks: list[DocumentChunk] = []
-
-        # Abstract (top answer)
-        if data.get("AbstractText"):
-            chunks.append(DocumentChunk(
-                id=str(uuid.uuid4()),
-                content=data["AbstractText"],
-                metadata={"source_type": "web", "url": data.get("AbstractURL", "")},
-                score=0.7,
-                source=data.get("AbstractSource", "web"),
-            ))
-
-        # Related topics
-        for topic in data.get("RelatedTopics", [])[:max_results]:
-            if isinstance(topic, dict) and topic.get("Text"):
+        with DDGS() as ddgs:
+            for r in ddgs.text(query, max_results=max_results):
+                # Each result: {'title': ..., 'href': ..., 'body': ...}
+                body = r.get("body", "").strip()
+                if not body:
+                    continue
                 chunks.append(DocumentChunk(
                     id=str(uuid.uuid4()),
-                    content=topic["Text"],
+                    content=f"{r.get('title', '')}\n{body}",
                     metadata={
                         "source_type": "web",
-                        "url": topic.get("FirstURL", ""),
+                        "url": r.get("href", ""),
                     },
-                    score=0.5,
-                    source="duckduckgo",
+                    score=0.6,
+                    source=r.get("href", "web")[:60],
                 ))
-            if len(chunks) >= max_results:
-                break
-
-        log.info("web_search_results", query=query[:60], n=len(chunks))
         return chunks
