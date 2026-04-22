@@ -26,7 +26,7 @@ class WebSearchTool:
             return []
 
     def _sync_search(self, query: str, max_results: int) -> list[DocumentChunk]:
-        from duckduckgo_search import DDGS
+        from ddgs import DDGS
         chunks: list[DocumentChunk] = []
         with DDGS() as ddgs:
             for r in ddgs.text(query, max_results=max_results):
