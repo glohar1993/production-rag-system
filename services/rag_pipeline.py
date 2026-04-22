@@ -22,6 +22,7 @@ from retrieval.filters import MetadataFilter
 from agents.crag import CRAGAgent
 from security.output_guard import OutputGuard
 from prompts.templates import build_rag_prompt
+from tools.web_search import WebSearchTool
 
 log = structlog.get_logger(__name__)
 settings = get_settings()
