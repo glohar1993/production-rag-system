@@ -246,7 +246,7 @@ class RAGPipeline:
                 chunk_id=chunk.id,
                 score=chunk.score,
             )
-            for chunk in chunks
+            for chunk in chunks[:5]
         ]
 
     def _deduplicate(self, chunks: list[DocumentChunk]) -> list[DocumentChunk]:
