@@ -45,7 +45,7 @@ def chunk_section(
         result.append({
             "content": final_text,
             "metadata": {
-                "source": source_meta.get("name", "gst_document"),
+                "source": source_meta.get("name", source_meta.get("source", "gst_document")),
                 "doc_type": source_meta.get("doc_type", "gst_knowledge"),
                 "category": source_meta.get("category", "general"),
                 "tags": source_meta.get("tags", []),
